@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[
+function($scope,$rootScope,spModal,spUtil){
+	// widget controller 
+	var c = this;
+
+	$rootScope.$on('selectNote', function(event,data) {
+		c.server.get({
+			action: 'getEmp',
+			noteID: data
+		}).then(function(r) {
+			c.data.name = r.data.note1.employee_name;
+			c.data.location=r.data.note1.location_1;
+			c.data.noteID = r.data.note1.sys_id;
+			var tempDate = r.data.note1.date_of_joining_1;
+			c.data.doj = new Date(tempDate);
+		});
+	});
+
+	$rootScope.$on('newNote',function(event)
+								 {
+		c.data.name = '';
+		c.data.location = '';
+		c.data.doj = '';
+		c.data.noteID='';
+
+	})
+
+	c.Submit = function()
+	{
+
+		function convert(str) {
+			var date = new Date(str),
+					mnth = ("0" + (date.getMonth() + 1)).slice(-2),
+					day = ("0" + date.getDate()).slice(-2);
+			console.log(date);
+			return [date.getFullYear(), mnth, day].join("-");
+		}
+		var date1=convert(c.data.doj);
+		c.server.get({
+			action: 'newEmp',
+			location: c.data.location,
+			name: c.data.name,
+			doj:date1
+		}).then(function(r) {
+			c.data.noteID = r.data.noteID;
+			$rootScope.noteID = c.data.noteID;
+			$rootScope.$emit('shiftNotes',c.data);
+			c.data={};
+		});
+	}
+
+	c.deleteNote = function() {
+		c.server.get({
+			action: 'deleteNote',
+			noteID: c.data.noteID
+		}).then(function(r) {
+			spUtil.addTrivialMessage("The "+c.data.name+" record has been deleted.");
+			$rootScope.$emit('deleteNote', c.data.noteID);
+			c.data.name = '';
+			c.data.location = '';
+			c.data.doj = '';
+			c.data.noteID='';
+		});
+	}
+	c.confirmDelete = function(){
+		spModal.confirm("Are you sure you want to delete this Note record?").then(function(confirmed){
+			if(confirmed){
+				c.deleteNote();
+
+			}
+		});
+	}
+}
+]]></client_script>
+        <controller_as>c</controller_as>
+        <css/>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>true</has_preview>
+        <id>employee_body</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>Employee Body</name>
+        <option_schema/>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+
+	if (input && input.noteID) {
+		var note = new GlideRecord('demo_employee');
+		if (note.get(input.noteID))
+		{
+			if (input.action == 'getEmp') {
+				console.log('inside get emp-> '+input.noteID);
+				data.note1 = {};
+				$sp.getRecordValues(data.note1, note, "employee_name,location_1,date_of_joining_1, sys_id");
+			}
+
+			else if (input.action == 'deleteNote') { 
+				note.deleteRecord(); 
+			}
+			else
+			{
+				console.log('Error');
+			}
+		}
+	}
+	else if(input)
+	{
+		if (input.action == 'newEmp') {
+			var newNote = new GlideRecord('demo_employee');
+			newNote.initialize(); 
+			newNote.user=gs.getUser().getID();
+			newNote.employee_name=input.name;
+			newNote.location_1=input.location;
+			var temp_date=new GlideDateTime(input.doj);
+			newNote.date_of_joining_1=temp_date;
+			var id = newNote.insert();
+			newNote.noteID=id;
+			data.noteID=id;
+		}
+	}
+
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-10-15 09:52:40</sys_created_on>
+        <sys_id>1d7d3f3053a00010b87bddeeff7b124e</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Employee Body</sys_name>
+        <sys_package display_value="CreateNotes" source="x_snc_createnotes">df5fd9a5090232007f44e1046c8ff69f</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CreateNotes">df5fd9a5090232007f44e1046c8ff69f</sys_scope>
+        <sys_update_name>sp_widget_1d7d3f3053a00010b87bddeeff7b124e</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2019-10-15 09:52:40</sys_updated_on>
+        <template><![CDATA[ <div class="panel panel-default">
+  <div class="panel-heading clearfix">
+    <div class="row">
+      <div class="col-md-11">
+        <h1>
+          Enter employee details:
+         <delete-button-confirm/>
+          
+        </h1>
+         
+        <h4>
+          Name:
+        <input class="form-control" id="note-name" ng-model="c.data.name" ng-model-options="{debounce: 1000}"/>
+     </h4>
+         <h4>
+          Location:
+           <select class="form-control" id="note-location" ng-model="c.data.location" ng-model-options="{debounce: 1000}">
+             <option value="Hyderabad">Hyderabad</option>
+             <option value="Bangalore">Bangalore</option>
+             <option value="Mumbai">Mumbai</option>
+             <option value="Delhi">Delhi</option>
+           </select>
+             
+     </h4>
+        <h4>
+          Date of joining
+           <input type='date' class="form-control" id="note-doj" ng-model="c.data.doj"/>
+          
+        </h4>
+      <button class="btn btn btn-primary" ng-click="c.Submit()"> Submit
+        </button>
+          </div>
+     
+    </div>
+  </div>
+</div>]]></template>
+    </sp_widget>
+</record_update>
